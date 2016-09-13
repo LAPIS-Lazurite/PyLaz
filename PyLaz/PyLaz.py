@@ -65,11 +65,9 @@ class PyLaz:
 	def open(self):
 		cmd = "sudo insmod /home/pi/driver/LazDriver/lazdriver.ko"
 		ret = subprocess.call(cmd,shell=True)
-		print("%s = %d"%(cmd,ret))
 
 		cmd = "sudo chmod 0777 "+self.dev
 		ret = subprocess.call(cmd,shell=True)
-		print("%s = %d"%(cmd,ret))
 		if ret != 0:
 			return -2
 		self.lzgw_w = open(self.dev,"wb",buffering=0)
@@ -104,6 +102,7 @@ class PyLaz:
 		if result != rxaddr:
 			return-2
 		result = self.lzgw_w.write(payload.encode())
+		
 		return result
 
 	def close(self):
@@ -118,19 +117,22 @@ class PyLaz:
 	
 	def read(self):
 		size = self.lzgw.read(2)
-		if size > 0
-		raw = self.lzgw.read(size)
+		if size > 0:
+			raw = self.lzgw.read(size)
 		return self.decMac(raw)
 
 	def rxEnable(self):
 		result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_RXON,0)
 		return result
+	
 	def rxDisable(self):
 		result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_RXOFF,0)
 		return result
 
 	def decMac(self,raw):
-		header=unpack_from("H",raw,0)[0]
+		offset = 0
+		header=unpack_from("H",raw,offset)[0]
+		offset = 2
 		
 		rx_addr_type = bin(header >> 14)&0x0003
 		frame_ver = bin(header >> 12)&0x0003
@@ -141,71 +143,62 @@ class PyLaz:
 		ack_req = bin(header >> 5)&0x0001
 		pending = bin(header >> 4)&0x0001
 		seq_enb = bin(header >> 3)&0x0001
-		frame_type = bin(header >> 3)&0x0007
+		frame_type = bin(header >> 0)&0x0007
 
-		addr_type = rx_addr_type*4 + tx_addr_type*2 + panid_comp
+
+		if rx_addr_type == 0:
+			rx_addr_enb = 0
+		else:
+			rx_addr_enb = 1
+
+		if tx_addr_type == 0:
+			tx_addr_enb = 0
+		else:
+			tx_addr_enb = 1
+
+		addr_type = rx_addr_enb*4 + tx_addr_enb*2 + panid_comp
 
 		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
+			rx_panid_comp = False
+			tx_panid_comp = False
 		elif addr_type == 1:
-                        rx_panid = True
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		if addr_type == 0:
-                        rx_panid = False
-                        tx_panid = False
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
-		header=unpack_from("H",raw,0)[0]
+			rx_panid_comp = True
+			tx_panid_comp = False
+		elif addr_type == 2:
+			rx_panid_comp = False
+			tx_panid_comp = True
+		elif addr_type == 3:
+			rx_panid_comp = False
+			tx_panid_comp = False
+		elif addr_type == 4:
+			rx_panid_comp = True
+			tx_panid_comp = False
+		elif addr_type == 5:
+			rx_panid_comp = False
+			tx_panid_comp = False
+		elif addr_type == 6:
+			rx_panid_comp = True
+			tx_panid_comp = False
+		else:
+			addr_type = 7 
+			rx_panid_comp = False
+			tx_panid_comp = False 
+		
+		seq_num=unpack_from("B",raw,offset)[0]
+		offset = 1
+
+		if rx_panid_comp == False:
+			rx_panid=unpack_from("H",raw,offset)[0]
+			offset = 2
+		
+		if rx_addr_type == 1:
+			rx_addr=unpack_from("B",raw,offset)[0]
+			offset = 1
+		if rx_addr_type == 2:
+			rx_addr=unpack_from("H",raw,offset)[0]
+			offset = 2
+		if rx_addr_type == 3:
+			rx_addr=unpack_from("8B",raw,offset)[0]
+			offset = 8
+
 		return 0
