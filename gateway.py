@@ -12,6 +12,7 @@ import time
 import struct
 import _thread as thread
 from datetime import datetime
+from PyLaz.PyLaz import *
 
 # Initializing Parameter
 LOGO = 'lazurite_mini_b.gif'
@@ -39,32 +40,18 @@ def on_closing():
     
 ## Gateway Process
 class Gateway():
+    lazurite = PyLaz()
+
+    def __init__(self):
+        result = self.lazurite.open()
     def mac802154_unsupported_format(self,raw,size):
         print(datetime.today(),"unsupported format::",raw)
 
     def mac802154_SM(self,raw,size):
         global separator
-        header = struct.unpack_from('H',raw,0)[0]
-        if header == 0xa821:
-            seq = struct.unpack_from('B',raw,2)[0]
-            rxPanid = struct.unpack_from('H',raw,3)[0]
-            rxAddr = struct.unpack_from('H',raw,5)[0]
-            txAddr = struct.unpack_from('H',raw,7)[0]
-            rssi = struct.unpack_from('B',raw,size-1)[0]
-            msg = struct.unpack_from("%ds"%(size-10),raw,9)
-            print(datetime.today(),"0x%04x"%header,"0x%02x"%seq,"0x%04x"%rxPanid,"0x%04x"%rxAddr,"0x%04x"%txAddr,"%03d "%rssi,msg[0],sep=separator)
-            return
-        elif header == 0xa802:
-            seq = struct.unpack_from('B',raw,2)[0]
-            rxPanid = struct.unpack_from('H',raw,3)[0]
-            rxAddr = struct.unpack_from('H',raw,5)[0]
-            txAddr = struct.unpack_from('H',raw,7)[0]
-            rssi = struct.unpack_from('B',raw,size-1)[0]
-            print(datetime.today(),"0x%04x"%header,"0x%02x"%seq,"0x%04x"%rxPanid,"0x%04x"%rxAddr,"0x%04x"%txAddr,"%03d "%rssi,"(ACK)",sep=separator)
-            return
-        else:
-            self.mac802154_unsupported_format(raw,size)
-            return
+        print(datetime.today(),"0x%04x"%raw["header"],"0x%02x"%raw["seq_num"],"0x%04x"%raw["rx_panid"],"0x%04x"%raw["rx_addr"],"0x%04x"%raw["tx_addr"],"%03d "%raw["rx_rssi"],raw["payload"].decode('utf-8'),sep=separator)
+
+        return
     
     def mac802154_BM(self,raw,size):
         global separator
@@ -99,62 +86,30 @@ class Gateway():
         print("      date/time            headr  seq  rxPan  rxAddr txAddr rssi data b\'(text)\'")
         print("--------------------------|------|----|------|------|------|----|----------------")
         while start_flag:
-            data=self.fp.read(2)
-            if data != b'':
-                read_bytes = struct.unpack('H',data)[0]
-                if read_bytes != 0:
-                    data=self.fp.read(read_bytes)
-                    dispMode = mac_combobox.current()
-                    if dispMode == 0:
-                        self.mac802154_SM(data,read_bytes)
-                    elif dispMode == 1:
-                        self.mac802154_BM(data,read_bytes)
+            size=self.lazurite.available()
+            if size > 0 :
+                data=self.lazurite.read()
+                dispMode = mac_combobox.current()
+                self.mac802154_SM(data,size)
             time.sleep(0.001)
-    
-    def load_driver(self,ch,pwr,rate,panid,mode):
-        
-        cmd = "sudo insmod /home/pi/driver/sub-ghz/DRV_802154.ko ch="+str(ch)+" rate="+str(rate)+" pwr="+str(pwr)+" panid="+hex(panid)+" mode="+str(mode)
-        print(cmd)
-        try:
-            ret = subprocess.check_output(cmd.split(" "))
-        except subprocess.CalledProcessError:
-            print("Driver may be loaded already..")
-        except OSError:
-             print("OSError")
-        time.sleep(0.010)
-        cmd = "sudo chmod +r /dev/bp3596"
-        ret = subprocess.check_output(cmd.split(" "))
-      
-        cmd = "tail -n 2 /var/log/messages"
-        ret = subprocess.check_output(cmd.split(" "))
-        print(ret.decode("utf-8"))
-        time.sleep(0.001)
-        
-    def remove_driver(self):
-        cmd = "sudo rmmod DRV_802154"
-        print("")
-        print(cmd)
-        ret = subprocess.check_output(cmd.split(" "))
-        time.sleep(0.001)        
 
-        cmd = "tail -n 1 /var/log/messages"
-        ret = subprocess.check_output(cmd.split(" "))
-        print(ret.decode("utf-8"))
-        time.sleep(0.001)
+    def start_receive(self,ch,panid,rate,pwr):
+        self.lazurite.begin(ch,panid,rate,pwr)
+        self.lazurite.rxEnable()
 
-    def open_driver(self):
-        drv_path="/dev/bp3596"
-        self.fp=open(drv_path,"rb",buffering=0)
         thread.start_new_thread(self.loop,())
     
     def close_driver(self):
-        self.fp.close()
+        self.lazurite.rxDisable()
+        self.lazurite.close()
 
 ###### Frame Process
 class Frame(Tk.Frame):
     def __init__(self, master=None):
         global start_flag
         Tk.Frame.__init__(self, master)
+
+
         
         self.gw = Gateway()
 
@@ -249,8 +204,9 @@ class Frame(Tk.Frame):
         self.l_panid.grid(row=6,column=0,sticky=Tk.W + Tk.E,pady=10)
         self.t_panid.grid(row=6,column=1,padx=20,sticky=Tk.W)
 
-        self.c_ign.grid(row=0,column=6,sticky=Tk.W + Tk.E,padx=20)
+        '''self.c_ign.grid(row=0,column=6,sticky=Tk.W + Tk.E,padx=20)
         mac_combobox.grid(row=5,column=6,padx=20)
+        '''
         self.b_savelog.grid(row=6,column=6,padx=20)
         self.b_clearlog.grid(row=6,column=7,padx=20)
 
@@ -324,7 +280,6 @@ class Frame(Tk.Frame):
 
         start_flag = False
         self.gw.close_driver()
-        self.gw.remove_driver()
 
         
     def chInc(self):
@@ -367,13 +322,11 @@ class Frame(Tk.Frame):
             self.mode = 1
         else:
             self.mode = 0
-        self.gw.load_driver(self.ch,self.pwr,self.rate,self.panid,self.mode)
-        self.gw.open_driver()
+        self.gw.start_receive(self.ch,self.panid,self.rate,self.pwr)
 
     def close(self):
         if self.dvice_open:
             self.gw.close_driver()
-            self.gw.remove_driver()
 
 ##### Main Process
 

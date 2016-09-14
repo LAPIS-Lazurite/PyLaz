@@ -63,6 +63,10 @@ class PyLaz:
     dev="/dev/lzgw"
 
     def open(self):
+        '''
+        cmd = "sudo rmmod lazdriver.ko"
+        ret = subprocess.call(cmd,shell=True)
+        '''
         cmd = "sudo insmod /home/pi/driver/LazDriver/lazdriver.ko"
         ret = subprocess.call(cmd,shell=True)
 

@@ -16,12 +16,9 @@ signal.signal(signal.SIGINT,receive_signal)
 lazurite = PyLaz()
 
 result = lazurite.open()
-print(result)
 result = lazurite.begin(36,0xabcd,100,20)
-print(result)
 
 result = lazurite.rxEnable()
-print(result)
 
 while cont:
     result = lazurite.available()
@@ -31,8 +28,7 @@ while cont:
     time.sleep(0.01)
 
 
+result = lazurite.rxDisable()
 result = lazurite.close()
-
-result = lazurite.remove()
 
 print("end")
