@@ -71,7 +71,7 @@ class PyLaz:
         if ret != 0:
             return -2
         self.lzgw_w = open(self.dev,"wb",buffering=0)
-        self.lzgw = open(self.dev,"rb")
+        self.lzgw = open(self.dev,"rb",buffering=0)
 
         return 0
 
@@ -101,6 +101,7 @@ class PyLaz:
 
         if result != rxaddr:
             return-2
+
         result = self.lzgw_w.write(payload.encode())
         
         return result
@@ -116,10 +117,13 @@ class PyLaz:
         return ret
     
     def read(self):
-        size = self.lzgw.read(2)
+        size = self.available()
         if size > 0:
             raw = self.lzgw.read(size)
-        return self.decMac(raw)
+            return self.decMac(raw,size)
+        else:
+            data={}
+            return data
 
     def rxEnable(self):
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_RXON,0)
@@ -129,94 +133,136 @@ class PyLaz:
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_RXOFF,0)
         return result
 
-    def decMac(self,raw):
+    def available(self):
+        ret = self.lzgw.read(2)
+        if ret == b'':
+            return -1
+        size = unpack("H",ret)[0]
+        return size
+
+    def getMyAddress(self):
+        return get_my_addr0()
+
+    def decMac(self,raw,size):
+        rcv = {"header":0, "rx_addr_type":-1, "rx_addr":-1, "rx_panid_comp":-1, "rx_panid":-1, "tx_addr_type":-1, "tx_addr":-1, "tx_panid_comp":-1, "tx_panid":-1, "frame_ver":-1, "ielist":-1, "seq_comp":-1, "ack_req":-1, "pending":-1, "sec_enb":-1, "frame_type":-1 ,"rx_sec":-1,"rx_nsec":-1,"rx_rssi":-1}
         offset = 0
-        header=unpack_from("H",raw,offset)[0]
+        rcv['header']=unpack_from("H",raw,offset)[0]
         offset = 2
-        
-        rx_addr_type = bin(header >> 14)&0x0003
-        frame_ver = bin(header >> 12)&0x0003
-        tx_addr_type = bin(header >> 10)&0x0003
-        ielist = bin(header >> 9)&0x0001
-        seq_comp = bin(header >> 8)&0x0001
-        panid_comp = bin(header >> 6)&0x0001
-        ack_req = bin(header >> 5)&0x0001
-        pending = bin(header >> 4)&0x0001
-        seq_enb = bin(header >> 3)&0x0001
-        frame_type = bin(header >> 0)&0x0007
+        rcv['rx_addr_type'] = (rcv['header'] >> 14)&0x0003
+        rcv['frame_ver'] = (rcv['header'] >> 12)&0x0003
+        rcv['tx_addr_type'] = (rcv['header'] >> 10)&0x0003
+        rcv['ielist'] = (rcv['header'] >> 9)&0x0001
+        rcv['seq_comp'] = (rcv['header'] >> 8)&0x0001
+        rcv['panid_comp'] = (rcv['header'] >> 6)&0x0001
+        rcv['ack_req'] = (rcv['header'] >> 5)&0x0001
+        rcv['pending'] = (rcv['header'] >> 4)&0x0001
+        rcv['sec_enb'] = (rcv['header'] >> 3)&0x0001
+        rcv['frame_type'] = (rcv['header'] >> 0)&0x0007
 
-
-        if rx_addr_type == 0:
-            rx_addr_enb = 0
+        if rcv['rx_addr_type'] == 0:
+            rcv['rx_addr_enb'] = 0
         else:
-            rx_addr_enb = 1
+            rcv['rx_addr_enb'] = 1
 
-        if tx_addr_type == 0:
-            tx_addr_enb = 0
+        if rcv['tx_addr_type'] == 0:
+            rcv['tx_addr_enb'] = 0
         else:
-            tx_addr_enb = 1
+            rcv['tx_addr_enb'] = 1
 
-        addr_type = rx_addr_enb*4 + tx_addr_enb*2 + panid_comp
+        rcv['addr_type'] = rcv['rx_addr_enb']*4 + rcv['tx_addr_enb']*2 + rcv['panid_comp']
 
-        if addr_type == 0:
-            rx_panid_comp = False
-            tx_panid_comp = False
-        elif addr_type == 1:
-            rx_panid_comp = True
-            tx_panid_comp = False
-        elif addr_type == 2:
-            rx_panid_comp = False
-            tx_panid_comp = True
-        elif addr_type == 3:
-            rx_panid_comp = False
-            tx_panid_comp = False
-        elif addr_type == 4:
-            rx_panid_comp = True
-            tx_panid_comp = False
-        elif addr_type == 5:
-            rx_panid_comp = False
-            tx_panid_comp = False
-        elif addr_type == 6:
-            rx_panid_comp = True
-            tx_panid_comp = False
+        if rcv['addr_type'] == 0:
+            rcv['rx_panid_comp'] = 1
+            rcv['tx_panid_comp'] = 1
+        elif rcv['addr_type'] == 1:
+            rcv['rx_panid_comp'] = 0
+            rcv['tx_panid_comp'] = 1
+        elif rcv['addr_type'] == 2:
+            rcv['rx_panid_comp'] = 1
+            rcv['tx_panid_comp'] = 0
+        elif rcv['addr_type'] == 3:
+            rcv['rx_panid_comp'] = 1
+            rcv['tx_panid_comp'] = 1
+        elif rcv['addr_type'] == 4:
+            rcv['rx_panid_comp'] = 0
+            rcv['tx_panid_comp'] = 1
+        elif rcv['addr_type'] == 5:
+            rcv['rx_panid_comp'] = 1
+            rcv['tx_panid_comp'] = 1
+        elif rcv['addr_type'] == 6:
+            rcv['rx_panid_comp'] = 0
+            rcv['tx_panid_comp'] = 1
         else:
-            addr_type = 7 
-            rx_panid_comp = False
-            tx_panid_comp = False 
-        
-        if seq_comp == False:
-            seq_num=unpack_from("B",raw,offset)[0]
-            offset = 1
+            rcv['rx_panid_comp'] = 1
+            rcv['tx_panid_comp'] = 1
 
-        if rx_panid_comp == False:
-            rx_panid=unpack_from("H",raw,offset)[0]
-            offset = 2
-        
-        if rx_addr_type == 1:
-            rx_addr=unpack_from("B",raw,offset)[0]
-            offset = 1
-        if rx_addr_type == 2:
-            rx_addr=unpack_from("H",raw,offset)[0]
-            offset = 2
-        if rx_addr_type == 3:
-            rx_addr=unpack_from("8B",raw,offset)[0]
-            offset = 8
+        if rcv['seq_comp'] == 0:
+            rcv['seq_num']=unpack_from("B",raw,offset)[0]
+            offset = offset + 1
 
-        if tx_panid_comp == False:
-            tx_panid=unpack_from("H",raw,offset)[0]
-            offset = 2
-        
-        if tx_addr_type == 1:
-            tx_addr=unpack_from("B",raw,offset)[0]
-            offset = 1
-        if tx_addr_type == 2:
-            tx_addr=unpack_from("H",raw,offset)[0]
-            offset = 2
-        if tx_addr_type == 3:
-            tx_addr=unpack_from("8B",raw,offset)[0]
-            offset = 8
+        if rcv['rx_panid_comp'] == 0:
+            offset = offset + 2
+            rcv['rx_panid'] =unpack_from("H",raw,offset)[0]
 
-        
-        payload = unpack_from("s",raw,offset)[0]
+        if rcv['rx_addr_type'] == 1:
+            rcv['rx_addr']=unpack_from("B",raw,offset)[0]
+            offset = offset + 1
+        if rcv['rx_addr_type'] == 2:
+            rcv['rx_addr']=unpack_from("H",raw,offset)[0]
+            offset = offset + 2
+        if rcv['rx_addr_type'] == 3:
+            rcv['rx_addr']= unpack_from("8B",raw,offset)[0]
+            offset = offset + 8
 
-        return 0
+        if rcv['tx_panid_comp'] == 0:
+            rcv['tx_panid']=unpack_from("H",raw,offset)[0]
+            offset = offset + 2
+        
+        if rcv['tx_addr_type'] == 1:
+            rcv['tx_addr']=unpack_from("B",raw,offset)[0]
+            offset = offset + 1
+        if rcv['tx_addr_type'] == 2:
+            rcv['tx_addr']=unpack_from("H",raw,offset)[0]
+            offset = offset + 2
+        if rcv['tx_addr_type'] == 3:
+            rcv['tx_addr']=unpack_from("8B",raw,offset)[0]
+            offset = offset + 8
+
+        rcv['payload'] = unpack_from("%ds"%(size-offset),raw,offset)[0]
+
+
+        sec = fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_SEC1)
+        sec = sec * 65536 + fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_SEC0)
+        nsec = fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_NSEC1)
+        nsec = nsec *65536 + fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_NSEC0)
+        rcv["rx_sec"] = sec
+        rcv["rx_nsec"] = nsec
+        rcv["rx_rssi"]= fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_RSSI)
+
+        return rcv
+
+    def get_my_addr0(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR0,0)
+    def get_my_addr1(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR1,0)
+    def get_my_addr2(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR2,0)
+    def get_my_addr3(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR3,0)
+    def get_addr_type(self): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_ADDR_TYPE,0)
+    def set_addr_type(self,addr_type): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_ADDR_TYPE,addr_type)
+    def get_tx_retry(self): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_TX_RETRY,0)
+    def set_tx_retry(self,retry): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_RETRY,retry)
+    def get_rx_sec0(self): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_NSEC0,0)
+    def get_rx_sec1(self): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_NSEC1,0)
+    def get_rx_nsec0(self): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_SEC0,0)
+    def get_rx_nsec1(self): 
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_SEC1,0)
+
