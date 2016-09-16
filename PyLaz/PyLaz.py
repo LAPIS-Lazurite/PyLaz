@@ -62,7 +62,7 @@ class PyLaz:
     lzgw_w = 0
     dev="/dev/lzgw"
 
-    def open(self):
+    def init(self):
         '''
         cmd = "sudo rmmod lazdriver.ko"
         ret = subprocess.call(cmd,shell=True)
@@ -97,6 +97,8 @@ class PyLaz:
             return -5
         return 0
 
+    def send(self,panid,rxaddr,payload,length):
+        return send(self,panid,rxaddr,payload)
     def send(self,panid,rxaddr,payload):
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_PANID,panid)
         if result != panid:
@@ -140,7 +142,7 @@ class PyLaz:
     def available(self):
         ret = self.lzgw.read(2)
         if ret == b'':
-            return -1
+            return 0
         size = unpack("H",ret)[0]
         return size
 
@@ -244,6 +246,30 @@ class PyLaz:
         rcv["rx_rssi"]= fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_RSSI)
 
         return rcv
+
+    def getAddrType(self):
+        if fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE) != 0:
+            return -1
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_ADDR_TYPE)
+    def setAddrType(self,addr_type):
+        if fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE) != 0:
+            return -1
+        if fcntl.ioctl(self.lzgw,self.IOCTL_SET_ADDR_TYPE,addr_type) != addr_type:
+            return -2
+        if fcntl.ioctl(self.lzgw,self.IOCTL_SET_SEND_MODE) != 0:
+            return -3
+        return 0
+    def getTxRetry(self):
+        fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE)
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_TX_RETRY)
+
+    def setTxRetry(self,tx_retry):
+        if fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE) != 0:
+            return -1
+        if fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_RETRY,tx_retry) != tx_retry:
+            return -2
+        if fcntl.ioctl(self.lzgw,self.IOCTL_SET_SEND_MODE) != 0:
+            return -3
 
     def get_my_addr0(self):
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR0,0)

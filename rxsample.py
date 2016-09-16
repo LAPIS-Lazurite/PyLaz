@@ -15,7 +15,7 @@ signal.signal(signal.SIGINT,receive_signal)
 
 lazurite = PyLaz()
 
-result = lazurite.open()
+result = lazurite.init()
 result = lazurite.begin(36,0xabcd,100,20)
 
 result = lazurite.rxEnable()
