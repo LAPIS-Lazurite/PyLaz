@@ -118,6 +118,8 @@ class PyLaz:
 
     def remove(self):
         self.lzgw.close()
+        self.lzgw_w.close()
+        self.lzgw.close()
         cmd = "sudo rmmod lazdriver"
         ret = subprocess.call(cmd,shell=True)
         return ret
