@@ -20,13 +20,15 @@ result = lazurite.init()
 result = lazurite.begin(36,0xabcd,100,20)
 
 while cont:
-    result = lazurite.send(0xabcd,0x5fba,"hello")
-    print (result)
+    try:
+        result = lazurite.send(0xabcd,0x4009,"hello")
+        print (result)
+    except Exception as e:
+        print (e)
+
     time.sleep(1)
 
-
 result = lazurite.close()
-
 result = lazurite.remove()
 
 

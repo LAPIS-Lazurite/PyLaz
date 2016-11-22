@@ -99,6 +99,7 @@ class PyLaz:
 
     def send(self,panid,rxaddr,payload,length):
         return send(self,panid,rxaddr,payload)
+
     def send(self,panid,rxaddr,payload):
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_PANID,panid)
         if result != panid:
@@ -109,7 +110,7 @@ class PyLaz:
             return-2
 
         result = self.lzgw_w.write(payload.encode())
-        
+
         return result
 
     def close(self):
@@ -119,11 +120,11 @@ class PyLaz:
     def remove(self):
         self.lzgw.close()
         self.lzgw_w.close()
-        self.lzgw.close()
         cmd = "sudo rmmod lazdriver"
+        #ret = subprocess.check_call(cmd.split(" "))
         ret = subprocess.call(cmd,shell=True)
         return ret
-    
+
     def read(self):
         size = self.available()
         if size > 0:
@@ -136,7 +137,7 @@ class PyLaz:
     def rxEnable(self):
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_RXON,0)
         return result
-    
+
     def rxDisable(self):
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_RXOFF,0)
         return result
@@ -225,7 +226,7 @@ class PyLaz:
         if rcv['tx_panid_comp'] == 0:
             rcv['tx_panid']=unpack_from("H",raw,offset)[0]
             offset = offset + 2
-        
+
         if rcv['tx_addr_type'] == 1:
             rcv['tx_addr']=unpack_from("B",raw,offset)[0]
             offset = offset + 1
@@ -249,10 +250,41 @@ class PyLaz:
 
         return rcv
 
+    def getSendMode(self):
+        param = {}
+        data = get_addr_type()
+        param.update({"addr_type": data})
+        data = get_sense_time()
+        param.update({"sense_time": data})
+        data = get_tx_retry()
+        param.update({"tx_retry": data})
+        data = get_tx_interval()
+        param.update({"tx_interval": data})
+        data = get_cca_wait()
+        param.update({"cca_wait": data})
+        data = get_my_addr0()
+        param.update({"my_address": data})
+
+        return param
+
+    def setSendMode(self,param):
+        if "addr_type" in param:
+            set_addr_type(param["addr_type"])
+        if "sense_time" in param:
+            set_addr_type(param["sense_time"])
+        if "tx_retry" in param:
+            set_tx_retry(param["tx_retry"])
+        if "tx_interval" in param:
+            set_tx_interval(param["tx_interval"])
+        if "cca_wait" in param:
+            set_cca_wait(param["cca_wait"])
+        return 0
+
     def getAddrType(self):
         if fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE) != 0:
             return -1
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_ADDR_TYPE)
+
     def setAddrType(self,addr_type):
         if fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE) != 0:
             return -1
@@ -261,6 +293,7 @@ class PyLaz:
         if fcntl.ioctl(self.lzgw,self.IOCTL_SET_SEND_MODE) != 0:
             return -3
         return 0
+
     def getTxRetry(self):
         fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE)
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_TX_RETRY)
@@ -272,29 +305,41 @@ class PyLaz:
             return -2
         if fcntl.ioctl(self.lzgw,self.IOCTL_SET_SEND_MODE) != 0:
             return -3
+        return 0
 
     def get_my_addr0(self):
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR0,0)
+
     def get_my_addr1(self):
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR1,0)
+
     def get_my_addr2(self):
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR2,0)
+
     def get_my_addr3(self):
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR3,0)
+
     def get_addr_type(self): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_ADDR_TYPE,0)
+
     def set_addr_type(self,addr_type): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_SET_ADDR_TYPE,addr_type)
+
     def get_tx_retry(self): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_TX_RETRY,0)
+
     def set_tx_retry(self,retry): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_RETRY,retry)
+
     def get_rx_sec0(self): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_NSEC0,0)
+
     def get_rx_sec1(self): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_NSEC1,0)
+
     def get_rx_nsec0(self): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_SEC0,0)
+
     def get_rx_nsec1(self): 
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_RX_SEC1,0)
 

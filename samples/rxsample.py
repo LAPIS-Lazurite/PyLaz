@@ -30,5 +30,6 @@ while cont:
 
 result = lazurite.rxDisable()
 result = lazurite.close()
+result = lazurite.remove()
 
 print("end")

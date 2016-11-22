@@ -42,8 +42,10 @@ def on_closing():
 class Gateway():
     lazurite = PyLaz()
 
-    def __init__(self):
-        result = self.lazurite.init()
+    #def __init__(self):
+        #result = self.lazurite.init()
+
+
     def mac802154_unsupported_format(self,raw,size):
         print(datetime.today(),"unsupported format::",raw)
 
@@ -94,6 +96,7 @@ class Gateway():
             time.sleep(0.001)
 
     def start_receive(self,ch,panid,rate,pwr):
+        result = self.lazurite.init()
         self.lazurite.begin(ch,panid,rate,pwr)
         self.lazurite.rxEnable()
 
@@ -102,6 +105,7 @@ class Gateway():
     def close_driver(self):
         self.lazurite.rxDisable()
         self.lazurite.close()
+        self.lazurite.remove()
 
 ###### Frame Process
 class Frame(Tk.Frame):
@@ -210,7 +214,7 @@ class Frame(Tk.Frame):
         self.b_savelog.grid(row=6,column=6,padx=20)
         self.b_clearlog.grid(row=6,column=7,padx=20)
 
-#        self.ImageInforcopus.grid(row=0, column=8)
+#        selfxImageInforcopus.grid(row=0, column=8)
 
 ## LOG WINDOW
         global XSCALL
