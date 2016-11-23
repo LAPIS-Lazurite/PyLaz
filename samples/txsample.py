@@ -31,4 +31,3 @@ while cont:
 result = lazurite.close()
 result = lazurite.remove()
 
-

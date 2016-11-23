@@ -1,7 +1,7 @@
 import fcntl
 import subprocess
-import os
-import time
+from ctypes import *
+from struct import *
 
 class PyLaz:
     IOCTL_CMD=      0x0000
@@ -122,8 +122,11 @@ class PyLaz:
         self.lzgw.close()
         self.lzgw_w.close()
         cmd = "sudo rmmod lazdriver"
-        time.sleep(1)
-        ret = subprocess.call(cmd,shell=True)
+        #ret = subprocess.check_call(cmd.split(" "))
+        #ret = subprocess.call(cmd,shell=True)
+        print(os.path.abspath(os.path.dirname(__file__)))
+        lib = cdll.LoadLibrary('/home/pi/driver/PyLaz/PyLaz/delmod.so')
+        lib.remove_module()
 
         return ret
 
