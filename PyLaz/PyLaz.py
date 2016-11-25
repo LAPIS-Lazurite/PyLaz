@@ -1,6 +1,7 @@
 import fcntl
 import subprocess
 import os
+from struct import *
 import time
 
 class PyLaz:
@@ -80,16 +81,16 @@ class PyLaz:
         return 0
 
     def begin(self,ch,panid,rate,pwr):
-        result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_CH,ch)
+        result = self.set_ch(ch)
         if result != ch:
             return -1
-        result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_MY_PANID,panid)
+        result = self.set_my_panid(panid)
         if result != panid:
             return -2
-        result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_BPS,rate)
+        result = self.set_bps(rate)
         if result != rate:
             return -3
-        result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_PWR,pwr)
+        result = self.set_pwr(pwr)
         if result != pwr:
             return -4
         result = fcntl.ioctl(self.lzgw,self.IOCTL_SET_BEGIN,0)
@@ -253,33 +254,36 @@ class PyLaz:
         return rcv
 
     def getSendMode(self):
+        self.get_send_mode()
         param = {}
-        data = get_addr_type()
+        data = self.get_addr_type()
         param.update({"addr_type": data})
-        data = get_sense_time()
+        data = self.get_sense_time()
         param.update({"sense_time": data})
-        data = get_tx_retry()
+        data = self.get_tx_retry()
         param.update({"tx_retry": data})
-        data = get_tx_interval()
+        data = self.get_tx_interval()
         param.update({"tx_interval": data})
-        data = get_cca_wait()
+        data = self.get_cca_wait()
         param.update({"cca_wait": data})
-        data = get_my_addr0()
+        data = self.get_my_addr0()
         param.update({"my_address": data})
 
         return param
 
     def setSendMode(self,param):
+        self.get_send_mode()
         if "addr_type" in param:
-            set_addr_type(param["addr_type"])
+            self.set_addr_type(param["addr_type"])
         if "sense_time" in param:
-            set_addr_type(param["sense_time"])
+            self.set_addr_type(param["sense_time"])
         if "tx_retry" in param:
-            set_tx_retry(param["tx_retry"])
+            self.set_tx_retry(param["tx_retry"])
         if "tx_interval" in param:
-            set_tx_interval(param["tx_interval"])
+            self.set_tx_interval(param["tx_interval"])
         if "cca_wait" in param:
-            set_cca_wait(param["cca_wait"])
+            self.set_cca_wait(param["cca_wait"])
+        self.set_send_mode()
         return 0
 
     def getAddrType(self):
@@ -308,6 +312,60 @@ class PyLaz:
         if fcntl.ioctl(self.lzgw,self.IOCTL_SET_SEND_MODE) != 0:
             return -3
         return 0
+
+    def get_ch(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_CH,0)
+
+    def set_ch(self,ch):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_CH,ch)
+
+    def get_my_panid(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_PANID,0)
+
+    def set_my_panid(self,panid):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_MY_PANID,panid)
+
+    def get_bps(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_BPS,0)
+
+    def set_bps(self,bps):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_BPS,bps)
+
+    def get_pwr(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_PWR,0)
+
+    def set_pwr(self,pwr):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_PWR,pwr)
+
+    def get_send_mode(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_SEND_MODE,0)
+
+    def set_send_mode(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_SEND_MODE,0)
+
+    def get_sense_time(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_SENSE_TIME,0)
+
+    def set_sense_time(self,stime):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_SENSE_TIME,stime)
+
+    def get_tx_retry(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_TX_RETRY,0)
+
+    def set_tx_retry(self,txretry):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_RETRY,txretry)
+
+    def get_tx_interval(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_TX_INTERVAL,0)
+
+    def set_tx_interval(self,txinterval):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_TX_INTERVAL,txinterval)
+
+    def get_cca_wait(self):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_GET_CCA_WAIT,0)
+
+    def set_cca_wait(self,ccawait):
+        return fcntl.ioctl(self.lzgw,self.IOCTL_SET_CCA_WAIT,ccawait)
 
     def get_my_addr0(self):
         return fcntl.ioctl(self.lzgw,self.IOCTL_GET_MY_ADDR0,0)

@@ -18,8 +18,12 @@ lazurite = PyLaz()
 result = lazurite.init()
 
 result = lazurite.begin(36,0xabcd,100,20)
+result = lazurite.rxEnable()
 
 while cont:
+    result = lazurite.available()
+    if result > 0:
+        print(lazurite.read())
     try:
         result = lazurite.send(0xabcd,0x5f59,"hello")
         print (result)
